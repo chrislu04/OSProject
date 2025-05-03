@@ -46,6 +46,13 @@ struct Process
     long reqProcessorTime;  // Total amount of processor time needed
     long processorTime;     // Amount of processor given to this process
 
+
+    //New------------
+    int timeUsedThisQuantum = 0;
+    int memoryRequired = 0;
+    int level = 0;
+    //New------------
+
     State state; // State of the process
 
     list<IOEvent> ioEvents;  // The IO events for this process, stored in order of the time into the process execution that they start 

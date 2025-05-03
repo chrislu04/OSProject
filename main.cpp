@@ -5,6 +5,8 @@
 #include <chrono> // for sleep
 #include <thread> // for sleep
 
+#include <queue>
+
 int main(int argc, char* argv[])
 {
     // single thread processor
@@ -30,7 +32,7 @@ int main(int argc, char* argv[])
     long sleepDuration = 50;
     string file;
     stringstream ss;
-    enum stepActionEnum {noAct, admitNewProc, handleInterrupt, beginRun, continueRun, ioRequest, complete} stepAction;
+    enum stepActionEnum {noAct, admitNewProc, handleInterrupt, beginRun, continueRun, ioRequest, complete, endLevel} stepAction;
 
     // Do not touch
     switch(argc)
@@ -59,11 +61,20 @@ int main(int argc, char* argv[])
     time = 0;
 //    processorAvailable = true;
     Process* runningProcess = nullptr; // Current Running Process
-    list<Process*> readyList; // List of all ready processes in proper order
+    //list<Process*> readyList; // List of all ready processes in proper order
+    queue<Process*> highQueue;
+    queue<Process*> mediumQueue;
+    queue<Process*> lowQueue;
     list<Process*> blockedList; // List of all blocked processes
+    list<Process*> memBlockedList; // List of all memory blocked processes
+
+    const int totalMemory = 1024;
+    int usedMemory = 0;
+    int timeQuantum[] = {1, 2, 4};
+
 
     //keep running the loop until all processes have been added and have run to completion
-    while(processMgmt.moreProcessesComing() || !readyList.empty() || !blockedList.empty() || runningProcess) /* TODO add something to keep going as long as there are processes that arent done! */ 
+    while(processMgmt.moreProcessesComing() || !highQueue.empty() ||!mediumQueue.empty() ||!lowQueue.empty() || !blockedList.empty() || runningProcess) /* TODO add something to keep going as long as there are processes that arent done! */ 
     {
         //Update our current time step
         ++time;
@@ -98,29 +109,50 @@ int main(int argc, char* argv[])
 
         //   <your code here> 
         if(runningProcess)  { // Is there a process currently running? ---Yes
+          int quantum = timeQuantum[3 - runningProcess->level];
           runningProcess->processorTime++; // Update processor Time
+          runningProcess->timeUsedThisQuantum++;
           if(!runningProcess->ioEvents.empty() && runningProcess->ioEvents.front().time == runningProcess->processorTime) {  // Does the running process have an I/O Event? ---Yes
             ioModule.submitIORequest(time, runningProcess->ioEvents.front(), *runningProcess);  // I/O Request
             runningProcess->ioEvents.pop_front();
             runningProcess->state = blocked; // Block Process
             blockedList.push_back(runningProcess); // Add to block list
-            runningProcess = nullptr;
             stepAction = ioRequest;
           } else if(runningProcess->processorTime >= runningProcess->reqProcessorTime) { // ---No--- Has the running process run long enough? ---Yes
             runningProcess->state = done;
             runningProcess->doneTime = time;
-            runningProcess = nullptr;
             stepAction = complete;
+          } else if(runningProcess->timeUsedThisQuantum >= quantum) { // ---No--- Has the running process run long enough in the level but not done? ---Yes
+            if(runningProcess->level < 2) {
+              runningProcess->level--;
+            }
+            runningProcess->state = ready;
+            switch(runningProcess->level) {
+              case 2: mediumQueue.push(runningProcess); break;
+              case 1: lowQueue.push(runningProcess); break;
+            }
+            stepAction = endLevel;
           } else{ //--- No
             stepAction = continueRun;
+          }
+          if(stepAction != continueRun) { // If process is blocked, done running completely, or done running the level then deallocate memory
+            usedMemory += runningProcess.memoryRequired;
+            runningProcess = nullptr;
           }
         } else  {
           for(auto& process : processList)  { // Are there any new Arrivals? ---Yes
             if(process.state == newArrival) {
-              process.state = ready;
-              readyList.push_back(&process); // add to ready list
+              if(process.memoryRequired <= (totalMemory - usedMemory))  {
+                process.state = ready;
+                highQueue.push(&process); // add to ready list
+                usedMemory += process.memoryRequired;
+                break;
+              } else {
+                process.state = memBlocked;
+                memBlockedList.push_back(&process);
+                break;
+              }
               stepAction = admitNewProc;
-              break;
             }
           } // If there is a new arrival, then we skip the next statements
 
@@ -130,25 +162,44 @@ int main(int argc, char* argv[])
 
             for (auto it = blockedList.begin(); it != blockedList.end(); ) {  // Checks block list for correct process
               if ((*it)->id == interrupt.procID) {  
-                (*it)->state = ready;  
-                readyList.push_back(*it); // Adds blocked process back to the ready list
+                if((*it)->memoryRequired <= (totalMemory - usedMemory)) {
+                  (*it)->state = ready;
+                  switch((*it)->level) {
+                    case 3: highQueue.push(*it); break;
+                    case 2: mediumQueue.push(*it); break;
+                    case 1: lowQueue.push(*it); break;
+                  }
+                } else {
+                  (*it)->state = memBlocked;
+                  memBlockedList.push_back(*it);
+                }
                 it = blockedList.erase(it); // erases process from blocked list
-                stepAction = handleInterrupt;  
+                stepAction = handleInterrupt;
                 break;
               } else {  
                 ++it;  
               }  
             }  
-          } else if(stepAction != admitNewProc) { // ---No--- Are there any processes in the ready state? ---Yes
-            if (!readyList.empty() && runningProcess == nullptr) {
-              runningProcess = readyList.front(); // Selects first in ready lists line (already in order...)
-              readyList.pop_front();
+          } else if(stepAction != admitNewProc) { // ---No--- Are there any processes in the ready Queues? ---Yes
+            if(runningProcess == nullptr) {
+              if (!highQueue.empty()) {
+                runningProcess = highQueue.front();
+                highQueue.pop();
+              } else if (!mediumQueue.empty()) {
+                runningProcess = mediumQueue.front();
+                mediumQueue.pop();
+              } else if (!lowQueue.empty()) {
+                runningProcess = lowQueue.front();
+                lowQueue.pop();
+              }
               if (runningProcess) {
                 runningProcess->state = processing;
                 stepAction = beginRun;
+              } else if (memBlockedList){ // ---No--- Check memory blocked processes
+                
               }
             }
-          } // ---No--- Continue
+          } 
         }
 
         // Leave the below alone (at least for final submission, we are counting on the output being in expected format)
@@ -157,25 +208,28 @@ int main(int argc, char* argv[])
         switch(stepAction)
         {
             case admitNewProc:
-              cout << "[  admit]\t";
+              cout << "[   admit]\t";
               break;
             case handleInterrupt:
-              cout << "[ inrtpt]\t";
+              cout << "[  inrtpt]\t";
               break;
             case beginRun:
-              cout << "[  begin]\t";
+              cout << "[   begin]\t";
               break;
             case continueRun:
-              cout << "[contRun]\t";
+              cout << "[ contRun]\t";
               break;
             case ioRequest:
-              cout << "[  ioReq]\t";
+              cout << "[   ioReq]\t";
               break;
             case complete:
-              cout << "[ finish]\t";
+              cout << "[  finish]\t";
               break;
             case noAct:
-              cout << "[*noAct*]\t";
+              cout << "[ *noAct*]\t";
+              break;
+            case endLevel:
+              cout << "[endLevel]\t";
               break;
         }
 
