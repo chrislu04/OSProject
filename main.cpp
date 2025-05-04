@@ -137,16 +137,26 @@ int main(int argc, char* argv[])
             stepAction = continueRun;
           }
           if(stepAction != continueRun) { // If process is blocked, done running completely, or done running the level then deallocate memory
-            usedMemory += runningProcess.memoryRequired;
+            usedMemory -= runningProcess->memoryRequired;
+            for(int i = 0; i < memoryPartitions.size(); i++)  { // Finds memory partition and removes it
+              if(memoryPartitions[i] == runningProcess->id) {
+                memoryPartitions[i] = -1;
+                usedMemoryPartitions--;
+                break;
+              } else if (i == 3)  { // Error, memory partition not found
+                cout << "Error, memory partition not found" << endl;
+              }
+            }
             runningProcess = nullptr;
           }
         } else  { // ---No process running
           for(auto& process : processList)  { // Are there any new Arrivals? ---Yes
             if(process.state == newArrival) {
-              if(process.memoryRequired <= (totalMemory - usedMemory))  { // Is there memory available? ---Yes
+              if(usedMemoryPartitions < 4)  { // Is there memory available? ---Yes
                 process.state = ready;
                 highQueue.push(&process); // add to High queue
                 usedMemory += process.memoryRequired; // Allocate memory
+                usedMemoryPartitions++;
                 break;
               } else { // Is there memory available? ---No
                 highQueue.push(&process); // add to High queue
@@ -165,6 +175,14 @@ int main(int argc, char* argv[])
               if ((*it)->id == interrupt.procID) {  // Found process
                 if((*it)->memoryRequired <= (totalMemory - usedMemory)) { // Is there memory available? ---Yes
                   (*it)->state = ready;
+                  usedMemory += (*it)->memoryRequired;
+                  for(int i = 0; i < memoryPartitions.size(); i++) {
+                    if(memoryPartitions[i] == -1) {
+                      memoryPartitions[i] = (*it)->id;
+                      usedMemoryPartitions++;
+                      break;
+                    }
+                  }
                 } else { // No
                   (*it)->state = memBlocked;
                 }
@@ -193,12 +211,12 @@ int main(int argc, char* argv[])
                 lowQueue.pop();
               }
               if (runningProcess) {
-                if (runningProcess.state == memBlocked) { // Is memory allocated to this process? ---No
+                if (runningProcess->state == memBlocked) { // Is memory allocated to this process? ---No
                   if (usedMemoryPartitions < 4)  { // Is there available memory now? ---Yes
-                    usedMemory += runningProcess.memoryRequired; // Allocate memory 
+                    usedMemory += runningProcess->memoryRequired; // Allocate memory 
                     for(int i = 0; i < memoryPartitions.size(); i++)  {
                       if(memoryPartitions[i] == -1) { // Found open partition
-                        memoryPartitions[i] = runningProcess.id;
+                        memoryPartitions[i] = runningProcess->id;
                         usedMemoryPartitions++;
                         break;
                       } else if (i == 3)  { // Error, open memory partition not found
@@ -210,18 +228,18 @@ int main(int argc, char* argv[])
                     for(auto& process : processList)  { // find lowest priority process and set lowProcess pointer to it
                       if(process.state == ready)  {
                         if(lowProcess == nullptr) {
-                          lowProcess = process;
-                        } else if(process.level < lowProcess.level) {
-                          lowProcess = process;
+                          lowProcess = &process;
+                        } else if(process.level < lowProcess->level) {
+                          lowProcess = &process;
                         }
                       }
                     }
-                    lowProcess.state = memBlocked; // Deallocate memory
-                    usedMemory -= lowProcess.memoryRequired;
+                    lowProcess->state = memBlocked; // Deallocate memory
+                    usedMemory -= lowProcess->memoryRequired;
                     usedMemoryPartitions--;
                     for(int i = 0; i < memoryPartitions.size(); i++)  { // Finds memory partition and swaps
-                      if(memoryPartitions[i] == lowProcess.id) { // Found lowPriority process's partition
-                        memoryPartitions[i] = runningProcess.id;
+                      if(memoryPartitions[i] == lowProcess->id) { // Found lowPriority process's partition
+                        memoryPartitions[i] = runningProcess->id;
                         usedMemoryPartitions++;
                         break;
                       } else if (i == 3)  { // Error, open memory partition not found
