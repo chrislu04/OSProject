@@ -69,7 +69,7 @@ int main(int argc, char* argv[])
 
     const int totalMemory = 1024;
     int usedMemory = 0;
-    int timeQuantum[] = {1, 2, 4};
+    int timeQuantum[] = {4, 8, 16};
     int memoryPartitions[] = {-1,-1,-1,-1}; // To be filled with process IDs (4 partitions of size 256bytes)
     int usedMemoryPartitions = 0;
 
@@ -124,7 +124,7 @@ int main(int argc, char* argv[])
             runningProcess->doneTime = time;
             stepAction = complete;
           } else if(runningProcess->timeUsedThisQuantum >= quantum) { // ---No--- Has the running process run long enough in the level but not done? ---Yes
-            if(runningProcess->level < 2) {
+            if(runningProcess->level > 1) {
               runningProcess->level--;
             }
             runningProcess->state = ready;
@@ -137,16 +137,16 @@ int main(int argc, char* argv[])
             stepAction = continueRun;
           }
           if(stepAction != continueRun) { // If process is blocked, done running completely, or done running the level then deallocate memory
-            usedMemory -= runningProcess->memoryRequired;
-            for(int i = 0; i < 4; i++)  { // Finds memory partition and removes it
-              if(memoryPartitions[i] == int(runningProcess->id)) {
-                memoryPartitions[i] = -1;
-                usedMemoryPartitions--;
-                break;
-              } else if (i == 3)  { // Error, memory partition not found
-                cout << "Error, memory partition not found" << endl;
-              }
-            }
+            // usedMemory -= runningProcess->memoryRequired;
+            // for(int i = 0; i < 4; i++)  { // Finds memory partition and removes it
+            //   if(memoryPartitions[i] == int(runningProcess->id)) {
+            //     memoryPartitions[i] = -1;
+            //     usedMemoryPartitions--;
+            //     break;
+            //   } else if (i == 3)  { // Error, memory partition not found
+            //     cout << "Error, memory partition not found" << endl;
+            //   }
+            // }
             runningProcess = nullptr;
           }
         } else  { // ---No process running
@@ -157,13 +157,14 @@ int main(int argc, char* argv[])
                 highQueue.push(&process); // add to High queue
                 usedMemory += process.memoryRequired; // Allocate memory
                 usedMemoryPartitions++;
+                stepAction = admitNewProc;
                 break;
               } else { // Is there memory available? ---No
                 highQueue.push(&process); // add to High queue
                 process.state = memBlocked;
+                stepAction = admitNewProc;
                 break;
               }
-              stepAction = admitNewProc;
             }
           } // If there is a new arrival, then we skip the next statements
 
@@ -245,6 +246,11 @@ int main(int argc, char* argv[])
                       } else if (i == 3)  { // Error, open memory partition not found
                         cout << "Error, memory not found" << endl;
                       }
+                    }
+                    switch(lowProcess->level) {
+                      case 3: highQueue.push(lowProcess); break;
+                      case 2: mediumQueue.push(lowProcess); break;
+                      case 1: lowQueue.push(lowProcess); break;
                     }
                   }
                 }

@@ -19,6 +19,8 @@ it should enter a blocked state for IOEvent::duration time steps.
 #include<sstream>
 #include<fstream>
 #include<iomanip>
+#include<cstdlib>
+#include<ctime>
 
 using namespace std;
 
@@ -37,7 +39,9 @@ enum State { ready, processing, blocked, newArrival, done, memBlocked }; // Used
 
 struct Process
 {
-    Process() : id(999999), arrivalTime(-1), doneTime(-1), reqProcessorTime(0), processorTime(0), state(newArrival) {}
+    Process() : id(999999), arrivalTime(-1), doneTime(-1), reqProcessorTime(0), processorTime(0), state(newArrival) {
+        memoryRequired = (rand() + 1) % 256;
+    }
 
     unsigned int id;        // The process ID, assigned when the process is admitted to the system
 
@@ -49,7 +53,7 @@ struct Process
 
     //New------------
     int timeUsedThisQuantum = 0;
-    int memoryRequired = 0;
+    int memoryRequired;
     int level = 0;
     //New------------
 
