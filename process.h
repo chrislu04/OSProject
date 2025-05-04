@@ -33,7 +33,7 @@ struct IOEvent
     long duration;   // The duration that the process will be Blocked by this IOEvent
 };
 
-enum State { ready, processing, blocked, newArrival, done }; // Used to track the process states
+enum State { ready, processing, blocked, newArrival, done, memBlocked }; // Used to track the process states
 
 struct Process
 {

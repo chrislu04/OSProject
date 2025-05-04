@@ -22,6 +22,9 @@ void printProcessStates(list<Process>& processVector)
             case done:
                 stateChar = 'd';
                 break;
+            case memBlocked:
+                stateChar = 'm';
+                break;
         }
         cout << stateChar << ' ';
     }

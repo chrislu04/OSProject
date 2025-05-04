@@ -138,8 +138,8 @@ int main(int argc, char* argv[])
           }
           if(stepAction != continueRun) { // If process is blocked, done running completely, or done running the level then deallocate memory
             usedMemory -= runningProcess->memoryRequired;
-            for(int i = 0; i < memoryPartitions.size(); i++)  { // Finds memory partition and removes it
-              if(memoryPartitions[i] == runningProcess->id) {
+            for(int i = 0; i < 4; i++)  { // Finds memory partition and removes it
+              if(memoryPartitions[i] == int(runningProcess->id)) {
                 memoryPartitions[i] = -1;
                 usedMemoryPartitions--;
                 break;
@@ -176,7 +176,7 @@ int main(int argc, char* argv[])
                 if((*it)->memoryRequired <= (totalMemory - usedMemory)) { // Is there memory available? ---Yes
                   (*it)->state = ready;
                   usedMemory += (*it)->memoryRequired;
-                  for(int i = 0; i < memoryPartitions.size(); i++) {
+                  for(int i = 0; i < 4; i++) {
                     if(memoryPartitions[i] == -1) {
                       memoryPartitions[i] = (*it)->id;
                       usedMemoryPartitions++;
@@ -214,7 +214,7 @@ int main(int argc, char* argv[])
                 if (runningProcess->state == memBlocked) { // Is memory allocated to this process? ---No
                   if (usedMemoryPartitions < 4)  { // Is there available memory now? ---Yes
                     usedMemory += runningProcess->memoryRequired; // Allocate memory 
-                    for(int i = 0; i < memoryPartitions.size(); i++)  {
+                    for(int i = 0; i < 4; i++)  {
                       if(memoryPartitions[i] == -1) { // Found open partition
                         memoryPartitions[i] = runningProcess->id;
                         usedMemoryPartitions++;
@@ -237,8 +237,8 @@ int main(int argc, char* argv[])
                     lowProcess->state = memBlocked; // Deallocate memory
                     usedMemory -= lowProcess->memoryRequired;
                     usedMemoryPartitions--;
-                    for(int i = 0; i < memoryPartitions.size(); i++)  { // Finds memory partition and swaps
-                      if(memoryPartitions[i] == lowProcess->id) { // Found lowPriority process's partition
+                    for(int i = 0; i < 4; i++)  { // Finds memory partition and swaps
+                      if(memoryPartitions[i] == int(lowProcess->id)) { // Found lowPriority process's partition
                         memoryPartitions[i] = runningProcess->id;
                         usedMemoryPartitions++;
                         break;
