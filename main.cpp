@@ -66,11 +66,12 @@ int main(int argc, char* argv[])
     queue<Process*> mediumQueue;
     queue<Process*> lowQueue;
     list<Process*> blockedList; // List of all blocked processes
-    list<Process*> memBlockedList; // List of all memory blocked processes
 
     const int totalMemory = 1024;
     int usedMemory = 0;
     int timeQuantum[] = {1, 2, 4};
+    int memoryPartitions[] = {-1,-1,-1,-1}; // To be filled with process IDs (4 partitions of size 256bytes)
+    int usedMemoryPartitions = 0;
 
 
     //keep running the loop until all processes have been added and have run to completion
@@ -139,17 +140,17 @@ int main(int argc, char* argv[])
             usedMemory += runningProcess.memoryRequired;
             runningProcess = nullptr;
           }
-        } else  {
+        } else  { // ---No process running
           for(auto& process : processList)  { // Are there any new Arrivals? ---Yes
             if(process.state == newArrival) {
-              if(process.memoryRequired <= (totalMemory - usedMemory))  {
+              if(process.memoryRequired <= (totalMemory - usedMemory))  { // Is there memory available? ---Yes
                 process.state = ready;
-                highQueue.push(&process); // add to ready list
-                usedMemory += process.memoryRequired;
+                highQueue.push(&process); // add to High queue
+                usedMemory += process.memoryRequired; // Allocate memory
                 break;
-              } else {
+              } else { // Is there memory available? ---No
+                highQueue.push(&process); // add to High queue
                 process.state = memBlocked;
-                memBlockedList.push_back(&process);
                 break;
               }
               stepAction = admitNewProc;
@@ -161,17 +162,16 @@ int main(int argc, char* argv[])
             interrupts.pop_front(); //Removes interrupt
 
             for (auto it = blockedList.begin(); it != blockedList.end(); ) {  // Checks block list for correct process
-              if ((*it)->id == interrupt.procID) {  
-                if((*it)->memoryRequired <= (totalMemory - usedMemory)) {
+              if ((*it)->id == interrupt.procID) {  // Found process
+                if((*it)->memoryRequired <= (totalMemory - usedMemory)) { // Is there memory available? ---Yes
                   (*it)->state = ready;
-                  switch((*it)->level) {
-                    case 3: highQueue.push(*it); break;
-                    case 2: mediumQueue.push(*it); break;
-                    case 1: lowQueue.push(*it); break;
-                  }
-                } else {
+                } else { // No
                   (*it)->state = memBlocked;
-                  memBlockedList.push_back(*it);
+                }
+                switch((*it)->level) { // Regardless of Memory availability, put process back into queue
+                  case 3: highQueue.push(*it); break;
+                  case 2: mediumQueue.push(*it); break;
+                  case 1: lowQueue.push(*it); break;
                 }
                 it = blockedList.erase(it); // erases process from blocked list
                 stepAction = handleInterrupt;
@@ -193,15 +193,49 @@ int main(int argc, char* argv[])
                 lowQueue.pop();
               }
               if (runningProcess) {
+                if (runningProcess.state == memBlocked) { // Is memory allocated to this process? ---No
+                  if (usedMemoryPartitions < 4)  { // Is there available memory now? ---Yes
+                    usedMemory += runningProcess.memoryRequired; // Allocate memory 
+                    for(int i = 0; i < memoryPartitions.size(); i++)  {
+                      if(memoryPartitions[i] == -1) { // Found open partition
+                        memoryPartitions[i] = runningProcess.id;
+                        usedMemoryPartitions++;
+                        break;
+                      } else if (i == 3)  { // Error, open memory partition not found
+                        cout << "Error, empty memory not found" << endl;
+                      }
+                    }
+                  } else { // ---No, find lowest priority process to take memory from.
+                    Process* lowProcess = nullptr;
+                    for(auto& process : processList)  { // find lowest priority process and set lowProcess pointer to it
+                      if(process.state == ready)  {
+                        if(lowProcess == nullptr) {
+                          lowProcess = process;
+                        } else if(process.level < lowProcess.level) {
+                          lowProcess = process;
+                        }
+                      }
+                    }
+                    lowProcess.state = memBlocked; // Deallocate memory
+                    usedMemory -= lowProcess.memoryRequired;
+                    usedMemoryPartitions--;
+                    for(int i = 0; i < memoryPartitions.size(); i++)  { // Finds memory partition and swaps
+                      if(memoryPartitions[i] == lowProcess.id) { // Found lowPriority process's partition
+                        memoryPartitions[i] = runningProcess.id;
+                        usedMemoryPartitions++;
+                        break;
+                      } else if (i == 3)  { // Error, open memory partition not found
+                        cout << "Error, memory not found" << endl;
+                      }
+                    }
+                  }
+                }
                 runningProcess->state = processing;
                 stepAction = beginRun;
-              } else if (memBlockedList){ // ---No--- Check memory blocked processes
-                
-              }
+              } // ---Yes, Continue
             }
-          } 
+          }
         }
-
         // Leave the below alone (at least for final submission, we are counting on the output being in expected format)
         cout << setw(5) << time << "\t"; 
         
