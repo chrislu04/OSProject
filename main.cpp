@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
     queue<Process*> lowQueue;
     list<Process*> blockedList; // List of all blocked processes
 
-    const int totalMemory = 1024;
+    // const int totalMemory = 1024;
     int usedMemory = 0;
     int timeQuantum[] = {16, 32, 64};
     int memoryPartitions[] = {-1,-1,-1,-1}; // To be filled with process IDs (4 partitions of size 256bytes)
@@ -250,7 +250,7 @@ int main(int argc, char* argv[])
                       if(memoryPartitions[i] == int(lowProcess->id)) { // Found lowPriority process's partition
                         memoryPartitions[i] = runningProcess->id;
                         usedMemoryPartitions++;
-                        usedMemory += runningProcess.memoryRequired;
+                        usedMemory += runningProcess->memoryRequired;
                         break;
                       } else if (i == 3)  { // Error, open memory partition not found
                         cout << "Error, memory not found" << endl;
@@ -302,7 +302,9 @@ int main(int argc, char* argv[])
 
         // You may wish to use a second vector of processes (you don't need to, but you can)
         printProcessStates(processList); // change processList to another vector of processes if desired
-
+        cout << usedMemoryPartitions << " [";
+        for (int i = 0; i < 4; i++) {cout << memoryPartitions[i] << ' '; } 
+        cout << "] " << usedMemory << endl;
         this_thread::sleep_for(chrono::milliseconds(sleepDuration));
     }
 
