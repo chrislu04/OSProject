@@ -54,7 +54,7 @@ struct Process
     //New------------
     int timeUsedThisQuantum = 0;
     int memoryRequired;
-    int level = 0;
+    int level = 3;
     //New------------
 
     State state; // State of the process

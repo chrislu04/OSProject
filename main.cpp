@@ -69,7 +69,7 @@ int main(int argc, char* argv[])
 
     const int totalMemory = 1024;
     int usedMemory = 0;
-    int timeQuantum[] = {4, 8, 16};
+    int timeQuantum[] = {16, 32, 64};
     int memoryPartitions[] = {-1,-1,-1,-1}; // To be filled with process IDs (4 partitions of size 256bytes)
     int usedMemoryPartitions = 0;
 
@@ -133,20 +133,22 @@ int main(int argc, char* argv[])
               case 1: lowQueue.push(runningProcess); break;
             }
             stepAction = endLevel;
+            runningProcess->timeUsedThisQuantum = 0;
+            runningProcess = nullptr; // If end of level, keep memory allocated
           } else{ //--- No
             stepAction = continueRun;
           }
-          if(stepAction != continueRun) { // If process is blocked, done running completely, or done running the level then deallocate memory
-            // usedMemory -= runningProcess->memoryRequired;
-            // for(int i = 0; i < 4; i++)  { // Finds memory partition and removes it
-            //   if(memoryPartitions[i] == int(runningProcess->id)) {
-            //     memoryPartitions[i] = -1;
-            //     usedMemoryPartitions--;
-            //     break;
-            //   } else if (i == 3)  { // Error, memory partition not found
-            //     cout << "Error, memory partition not found" << endl;
-            //   }
-            // }
+          if(stepAction == ioRequest || stepAction == complete) { // If process is blocked or done running completely then deallocate memory
+            usedMemory -= runningProcess->memoryRequired;
+            for(int i = 0; i < 4; i++)  { // Finds memory partition and removes it
+              if(memoryPartitions[i] == int(runningProcess->id)) {
+                memoryPartitions[i] = -1;
+                usedMemoryPartitions--;
+                break;
+              } else if (i == 3)  { // Error, memory partition not found
+                cout << "Error, memory partition not found" << endl;
+              }
+            }
             runningProcess = nullptr;
           }
         } else  { // ---No process running
@@ -157,6 +159,12 @@ int main(int argc, char* argv[])
                 highQueue.push(&process); // add to High queue
                 usedMemory += process.memoryRequired; // Allocate memory
                 usedMemoryPartitions++;
+                for(int i = 0; i< 4; i++){
+                  if(memoryPartitions[i] == -1){
+                    memoryPartitions[i] = process.id;
+                    break;
+                  }
+                } 
                 stepAction = admitNewProc;
                 break;
               } else { // Is there memory available? ---No
@@ -174,7 +182,7 @@ int main(int argc, char* argv[])
 
             for (auto it = blockedList.begin(); it != blockedList.end(); ) {  // Checks block list for correct process
               if ((*it)->id == interrupt.procID) {  // Found process
-                if((*it)->memoryRequired <= (totalMemory - usedMemory)) { // Is there memory available? ---Yes
+                if(usedMemoryPartitions < 4) { // Is there memory available? ---Yes
                   (*it)->state = ready;
                   usedMemory += (*it)->memoryRequired;
                   for(int i = 0; i < 4; i++) {
@@ -242,6 +250,7 @@ int main(int argc, char* argv[])
                       if(memoryPartitions[i] == int(lowProcess->id)) { // Found lowPriority process's partition
                         memoryPartitions[i] = runningProcess->id;
                         usedMemoryPartitions++;
+                        usedMemory += runningProcess.memoryRequired;
                         break;
                       } else if (i == 3)  { // Error, open memory partition not found
                         cout << "Error, memory not found" << endl;
@@ -253,10 +262,10 @@ int main(int argc, char* argv[])
                       case 1: lowQueue.push(lowProcess); break;
                     }
                   }
-                }
+                } // ---Yes, Continue
                 runningProcess->state = processing;
                 stepAction = beginRun;
-              } // ---Yes, Continue
+              }
             }
           }
         }
