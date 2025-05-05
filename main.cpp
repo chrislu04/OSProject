@@ -181,7 +181,13 @@ int main(int argc, char* argv[])
             interrupts.pop_front(); //Removes interrupt
 
             for (auto it = blockedList.begin(); it != blockedList.end(); ) {  // Checks block list for correct process
-              if ((*it)->id == interrupt.procID) {  // Found process
+              if((*it)->id == interrupt.procID && (*it)->state == done) { // Checks if interrupt is calling for process that has already completed.
+                cout << "Process already done; Interrupt" << endl;
+                stepAction = handleInterrupt;
+                runningProcess = nullptr;
+                break;
+              }
+              if ((*it)->id == interrupt.procID) {  // Found process and is not done
                 if(usedMemoryPartitions < 4) { // Is there memory available? ---Yes
                   (*it)->state = ready;
                   usedMemory += (*it)->memoryRequired;
@@ -302,9 +308,11 @@ int main(int argc, char* argv[])
 
         // You may wish to use a second vector of processes (you don't need to, but you can)
         printProcessStates(processList); // change processList to another vector of processes if desired
-        cout << usedMemoryPartitions << " [";
+        cout << usedMemoryPartitions << " [ ";
         for (int i = 0; i < 4; i++) {cout << memoryPartitions[i] << ' '; } 
-        cout << "] " << usedMemory << endl;
+        cout << "] " << usedMemory << ' ';
+        if(runningProcess) {cout << runningProcess->level;}
+        cout << endl;
         this_thread::sleep_for(chrono::milliseconds(sleepDuration));
     }
 
