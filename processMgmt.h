@@ -3,6 +3,9 @@
 
 #include<vector>
 #include<algorithm>  //for sort
+#include<cstdlib>
+#include<ctime>
+#include <unistd.h>
 using namespace std;
 
 #include "process.h"

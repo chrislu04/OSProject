@@ -24,6 +24,10 @@ void ProcessManagement::readProcessFile(const string& fname)
         ss.clear();
         ss.str(line);
 
+        sleep(1);
+        srand(time(NULL));
+        proc.memoryRequired = (rand() + 1) % 256;
+
         proc.id = procIDctrl;
         ++procIDctrl;
 
