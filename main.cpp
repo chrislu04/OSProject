@@ -7,6 +7,15 @@
 
 #include <queue>
 
+void transfer(list<Process> &processList, Process* runningPtr)  {
+  for(auto& process : processList)  {
+    if(process.id == runningPtr->id)  {
+      process = *runningPtr;
+      return;
+    }
+  }
+}
+
 int main(int argc, char* argv[])
 {
     // single thread processor
@@ -134,6 +143,7 @@ int main(int argc, char* argv[])
             }
             stepAction = endLevel;
             runningProcess->timeUsedThisQuantum = 0;
+            transfer(processList, runningProcess);
             runningProcess = nullptr; // If end of level, keep memory allocated
           } else{ //--- No
             stepAction = continueRun;
@@ -149,6 +159,7 @@ int main(int argc, char* argv[])
                 cout << "Error, memory partition not found" << endl;
               }
             }
+            transfer(processList, runningProcess);
             runningProcess = nullptr;
           }
         } else  { // ---No process running
@@ -181,12 +192,12 @@ int main(int argc, char* argv[])
             interrupts.pop_front(); //Removes interrupt
 
             for (auto it = blockedList.begin(); it != blockedList.end(); ) {  // Checks block list for correct process
-              if((*it)->id == interrupt.procID && (*it)->state == done) { // Checks if interrupt is calling for process that has already completed.
-                cout << "Process already done; Interrupt" << endl;
-                stepAction = handleInterrupt;
-                runningProcess = nullptr;
-                break;
-              }
+              // if((*it)->id == interrupt.procID && (*it)->state == done) { // Checks if interrupt is calling for process that has already completed.
+              //   cout << "Process already done; Interrupt" << endl;
+              //   stepAction = handleInterrupt;
+              //   runningProcess = nullptr;
+              //   break;
+              // }
               if ((*it)->id == interrupt.procID) {  // Found process and is not done
                 if(usedMemoryPartitions < 4) { // Is there memory available? ---Yes
                   (*it)->state = ready;
@@ -310,8 +321,10 @@ int main(int argc, char* argv[])
         printProcessStates(processList); // change processList to another vector of processes if desired
         cout << usedMemoryPartitions << " [ ";
         for (int i = 0; i < 4; i++) {cout << memoryPartitions[i] << ' '; } 
-        cout << "] " << usedMemory << ' ';
-        if(runningProcess) {cout << runningProcess->level;}
+        cout << "] usedMem:" << usedMemory << " lvl:";
+        if(runningProcess) {cout << runningProcess->level << " ID:";}
+        if(runningProcess) {cout << runningProcess->id << " Mem:";}
+        if(runningProcess) {cout << runningProcess->memoryRequired;}
         cout << endl;
         this_thread::sleep_for(chrono::milliseconds(sleepDuration));
     }
