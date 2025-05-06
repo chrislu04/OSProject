@@ -7,14 +7,14 @@
 
 #include <queue>
 
-void transfer(list<Process> &processList, Process* runningPtr)  {
-  for(auto& process : processList)  {
-    if(process.id == runningPtr->id)  {
-      process = *runningPtr;
-      return;
-    }
-  }
-}
+// void transfer(list<Process> &processList, Process* runningPtr)  {
+//   for(auto& process : processList)  {
+//     if(process.id == runningPtr->id)  {
+//       process = *runningPtr;
+//       return;
+//     }
+//   }
+// }
 
 int main(int argc, char* argv[])
 {
@@ -143,7 +143,7 @@ int main(int argc, char* argv[])
             }
             stepAction = endLevel;
             runningProcess->timeUsedThisQuantum = 0;
-            transfer(processList, runningProcess);
+            //transfer(processList, runningProcess);
             runningProcess = nullptr; // If end of level, keep memory allocated
           } else{ //--- No
             stepAction = continueRun;
@@ -159,7 +159,7 @@ int main(int argc, char* argv[])
                 cout << "Error, memory partition not found" << endl;
               }
             }
-            transfer(processList, runningProcess);
+            //transfer(processList, runningProcess);
             runningProcess = nullptr;
           }
         } else  { // ---No process running
@@ -272,11 +272,6 @@ int main(int argc, char* argv[])
                       } else if (i == 3)  { // Error, open memory partition not found
                         cout << "Error, memory not found" << endl;
                       }
-                    }
-                    switch(lowProcess->level) {
-                      case 3: highQueue.push(lowProcess); break;
-                      case 2: mediumQueue.push(lowProcess); break;
-                      case 1: lowQueue.push(lowProcess); break;
                     }
                   }
                 } // ---Yes, Continue
