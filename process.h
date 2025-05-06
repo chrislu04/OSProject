@@ -40,6 +40,7 @@ enum State { ready, processing, blocked, newArrival, done, memBlocked }; // Used
 struct Process
 {
     Process() : id(999999), arrivalTime(-1), doneTime(-1), reqProcessorTime(0), processorTime(0), state(newArrival) {
+        srand(time(NULL));
         memoryRequired = (rand() + 1) % 256;
     }
 

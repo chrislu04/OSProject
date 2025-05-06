@@ -314,14 +314,19 @@ int main(int argc, char* argv[])
 
         // You may wish to use a second vector of processes (you don't need to, but you can)
         printProcessStates(processList); // change processList to another vector of processes if desired
-        cout << usedMemoryPartitions << " [ ";
+        cout << "Memory Partitions:" << usedMemoryPartitions << " [ ";
         for (int i = 0; i < 4; i++) {cout << memoryPartitions[i] << ' '; } 
-        cout << "] usedMem:" << usedMemory << " lvl:";
-        if(runningProcess) {cout << runningProcess->level << " ID:";}
+        cout << "] usedMem:" << usedMemory << " processlvl:";
+        if(runningProcess) {cout << runningProcess->level << " runningID:";}
         if(runningProcess) {cout << runningProcess->id << " Mem:";}
         if(runningProcess) {cout << runningProcess->memoryRequired;}
-        cout << endl;
+        cout << " Internal Fragmentation:" << usedMemoryPartitions * 256 - usedMemory << endl;
         this_thread::sleep_for(chrono::milliseconds(sleepDuration));
+    }
+
+    cout << "Wait Times:" << endl;
+    for( auto& process : processList) {
+      cout << "Process ID: " << process.id << ", time: " << process.doneTime - process.arrivalTime << " time ticks" << endl;
     }
 
     return 0;
